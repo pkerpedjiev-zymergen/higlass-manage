@@ -296,16 +296,12 @@ def update_hm_config(hm_config):
         default='default',
         help='The name for this higlass instance',
         type=str)
-@click.option('--filetype', default=None, help="The type of file to ingest (e.g. cooler)")
-@click.option('--datatype', default=None, help="The data type of in the input file (e.g. matrix)")
-@click.option('--tracktype', default=None, help="The track type used to view this file")
-@click.option('--position', default=None, help="The position in the view to place this track")
 @click.option('--public-data/--no-public-data',
         default=True,
         help='Include or exclude public data in the list of available tilesets')
 @click.option('--assembly', default=None, help="The assembly that this data is mapped to")
 @click.option('--chromsizes-filename', default=None, help="A set of chromosome sizes to use for bed and bedpe files")
-def view(filename, hg_name, filetype, datatype, tracktype, position, public_data, 
+def view(filename, hg_name, public_data, 
         assembly, chromsizes_filename):
     '''
     View a file in higlass.
@@ -335,6 +331,19 @@ def view(filename, hg_name, filetype, datatype, tracktype, position, public_data
     # if the filenames match, check if the checksums match
     port = get_port(hg_name)
     uuid = None
+
+    # (filetype, datatype, tracktype, position) 
+    parts = filename.split(':')
+    if len(parts) < 5:
+        parts = parts + [None] * (5 - len(parts))
+    if len(parts) > 5:
+        parts = parts[:5]
+
+    parts = [p if (p is not None and len(p) > 0) else None for p in parts]
+
+    print("parts:", parts)
+
+    (filename, filetype, datatype, tracktype, position) = parts
 
     # guess filetype and datatype if they're None
     (filetype, inferred_datatype) = fill_filetype_and_datatype(filename, filetype, datatype)
@@ -399,6 +408,8 @@ def view(filename, hg_name, filetype, datatype, tracktype, position, public_data
 
     conf = hgc.ViewConf()
     view = conf.add_view()
+
+    print("position:", position)
 
     track = view.add_track(track_type=tracktype,
             server='http://localhost:{}/api/v1/'.format(port),
