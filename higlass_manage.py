@@ -181,10 +181,30 @@ def import_file(hg_name, filepath, filetype, datatype, assembly, name, uid, no_u
 
     return uid
 
-def get_temp_dir(hg_name):
+def get_temp_dir(hg_name, version):
     client = docker.from_env()
     container_name = hg_name_to_container_name(hg_name)
     config = client.api.inspect_container(container_name)
+
+    containers = client.containers.list(filters=
+        {"name": hg_name})
+
+    print("containers:", containers)
+    if len(containers) == 0:
+        raise HiGlassNotRunningException()
+
+    found_version = False
+    for tag in containers[0].image.tags:
+        tag_parts = tag.split(':')
+
+        version_tag = tag_parts[1]
+        if version_tag == version:
+            found_version = True
+
+    if not found_version:
+        print("Tags:", container.tags)
+        print("Requested version not running, restarting")
+        raise HiGlassNotRunningException()
 
     print('state', config['State']['Running'])
 
@@ -296,6 +316,10 @@ def update_hm_config(hm_config):
         default='default',
         help='The name for this higlass instance',
         type=str)
+@click.option('-v', '--version',
+        default='latest',
+        help='The version of the Docker container to use',
+        type=str)
 @click.option('--filetype', default=None, help="The type of file to ingest (e.g. cooler)")
 @click.option('--datatype', default=None, help="The data type of in the input file (e.g. matrix)")
 @click.option('--tracktype', default=None, help="The track type used to view this file")
@@ -305,7 +329,7 @@ def update_hm_config(hm_config):
         help='Include or exclude public data in the list of available tilesets')
 @click.option('--assembly', default=None, help="The assembly that this data is mapped to")
 @click.option('--chromsizes-filename', default=None, help="A set of chromosome sizes to use for bed and bedpe files")
-def view(filename, hg_name, filetype, datatype, tracktype, position, public_data, 
+def view(filename, version, hg_name, filetype, datatype, tracktype, position, public_data, 
         assembly, chromsizes_filename):
     '''
     View a file in higlass.
@@ -322,10 +346,11 @@ def view(filename, hg_name, filetype, datatype, tracktype, position, public_data
         The name of the file to view
     '''
     try:
-        temp_dir = get_temp_dir(hg_name)
+        temp_dir = get_temp_dir(hg_name, version)
         print("temp_dir:", temp_dir)
     except Exception:
-        _start(hg_name=hg_name)
+        print("starting:")
+        _start(hg_name=hg_name, version=version)
 
     # check if we have a running instance
     # if not, start one
@@ -516,10 +541,10 @@ def _start(temp_dir='/tmp/higlass-docker',
     if version == 'local':
         image = client.images.get('image-default')
     else:
-        sys.stdout.write("Pulling latest image... ")
+        sys.stdout.write("Pulling image {}...".format(version))
         sys.stdout.flush()
         image = client.images.pull('gehlenborglab/higlass', version)
-        sys.stdout.write("done")
+        sys.stdout.write("done\n")
         sys.stdout.flush()
 
     data_dir = op.expanduser(data_dir)
