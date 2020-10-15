@@ -1,17 +1,16 @@
 import click
 
-from higlass_manage.ingest import ingest
-from higlass_manage.list import tilesets, instances
-from higlass_manage.start import start
-from higlass_manage.stop import stop
-from higlass_manage.shell import shell
-from higlass_manage.view import view
-from higlass_manage.update_viewconfs import update_viewconfs
-from higlass_manage.logs import logs
-from higlass_manage import __version__
-
 import higlass_manage.create as hmce
 import higlass_manage.delete as hmde
+from higlass_manage import __version__
+from higlass_manage.ingest import ingest
+from higlass_manage.list import instances, tilesets
+from higlass_manage.logs import logs
+from higlass_manage.shell import shell
+from higlass_manage.start import start
+from higlass_manage.stop import stop
+from higlass_manage.update_viewconfs import update_viewconfs
+from higlass_manage.view import view
 
 
 @click.command()
@@ -44,6 +43,7 @@ def delete():
 delete.add_command(hmde.superuser)
 
 
+@click.version_option(__version__, "-V", "--version")
 @click.group()
 def cli():
     pass
